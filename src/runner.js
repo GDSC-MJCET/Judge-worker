@@ -12,7 +12,7 @@ async function runTestCase(lang, submissionId, input) {
 
   return new Promise((resolve) => {
     const args = [
-      'run', '--rm', '-i',
+      'run', '--rm',
       '--network', 'none',
       '--memory', '128m',
       '--cpus', '0.5',
