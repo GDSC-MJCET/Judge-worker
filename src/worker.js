@@ -22,10 +22,20 @@ async function startWorker() {
   const worker = new Worker(
     'judge',
     async (job) => {
-      const { submissionId, language, testCases } = job.data;
-      console.log(`[${submissionId}] Running ${testCases.length} test case(s) — language: ${language}`);
+      const { submissionId, code, language, testCases } = job.data;
+      console.log(`[${submissionId}] ── Job received ──`);
+      console.log(`[${submissionId}] Language: ${language} | Test cases: ${testCases.length} | Job ID: ${job.id}`);
+      console.log(`[${submissionId}] Code (first 300 chars): ${code.slice(0, 300)}`);
+      testCases.forEach((tc, i) => {
+        console.log(`[${submissionId}] TestCase[${i}] input=${JSON.stringify(tc.input.slice(0, 150))} expected=${JSON.stringify(tc.expectedOutput.slice(0, 150))}`);
+      });
 
       const results = await runner.run(job.data);
+
+      results.forEach((r) => {
+        console.log(`[${submissionId}] Result[${r.index}] passed=${r.passed} exitCode=${r.exitCode} timedOut=${r.timedOut} stdout=${JSON.stringify(r.stdout.slice(0, 200))}${r.stderr ? ` stderr=${JSON.stringify(r.stderr.slice(0, 200))}` : ''}`);
+      });
+
       const allPassed = results.every((r) => r.passed);
       const verdict = deriveVerdict(results);
 
@@ -42,7 +52,7 @@ async function startWorker() {
         { upsert: true, new: true }
       );
 
-      console.log(`[${submissionId}] Done — verdict: ${verdict} (${results.filter((r) => r.passed).length}/${results.length} passed)`);
+      console.log(`[${submissionId}] ── Done — verdict: ${verdict} (${results.filter((r) => r.passed).length}/${results.length} passed) ──`);
 
       return { submissionId, verdict, allPassed, results };
     },

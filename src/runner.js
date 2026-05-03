@@ -6,13 +6,15 @@ const LANGUAGES = require('./languages');
 const TIMEOUT_MS = 10_000;
 const TEMP_BASE = '/tmp/judge';
 
-async function runTestCase(lang, submissionId, input) {
+async function runTestCase(lang, submissionId, input, index) {
   const { image, runCmd } = lang;
   const workDir = path.join(TEMP_BASE, submissionId);
+  console.log(`[${submissionId}] Docker run[${index}] image=${image} cmd="${runCmd}" input=${JSON.stringify((input || '').slice(0, 100))}`);
 
   return new Promise((resolve) => {
     const args = [
       'run', '--rm',
+      '-i',                  // keep stdin open so we can pipe input into the container
       '--network', 'none',
       '--memory', '128m',
       '--cpus', '0.5',
@@ -40,10 +42,13 @@ async function runTestCase(lang, submissionId, input) {
 
     proc.on('close', (exitCode) => {
       clearTimeout(timer);
+      console.log(`[${submissionId}] Docker done[${index}] exitCode=${exitCode ?? 1} timedOut=${timedOut} stdout_len=${stdout.length} stderr_len=${stderr.length}`);
       resolve({ stdout, stderr, exitCode: exitCode ?? 1, timedOut });
     });
 
-    if (input) {
+    // Always write input (even empty string) then close stdin.
+    // Without closing stdin, programs that read until EOF will hang.
+    if (input != null) {
       proc.stdin.write(input);
     }
     proc.stdin.end();
@@ -60,9 +65,10 @@ async function run({ submissionId, code, language, testCases }) {
   await fs.mkdir(workDir, { recursive: true });
   await fs.writeFile(path.join(workDir, lang.filename), code);
 
+  console.log(`[${submissionId}] Runner starting — workDir=${workDir} file=${lang.filename}`);
   const results = await Promise.all(
     testCases.map(async ({ input, expectedOutput }, index) => {
-      const { stdout, stderr, exitCode, timedOut } = await runTestCase(lang, submissionId, input);
+      const { stdout, stderr, exitCode, timedOut } = await runTestCase(lang, submissionId, input, index);
       const passed = !timedOut && exitCode === 0 && stdout.trimEnd() === expectedOutput.trimEnd();
       return { index, passed, stdout, stderr, exitCode, timedOut };
     })
