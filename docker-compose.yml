@@ -4,3 +4,17 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+  worker:
+    build: .
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      # Docker-out-of-Docker: let the worker call the host Docker daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Temp code files must live on the HOST so the host daemon can mount them
+      - /tmp/judge:/tmp/judge
+    restart: unless-stopped

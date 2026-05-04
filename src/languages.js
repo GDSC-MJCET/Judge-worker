@@ -16,8 +16,8 @@ const LANGUAGES = {
   },
   java: {
     image: 'openjdk:17.0.1-slim',
-    filename: 'Solution.java',
-    runCmd: 'javac Solution.java && java Solution',
+    filename: 'Main.java',          // default; runner overrides with actual public class name
+    runCmd: 'javac Main.java && java Main',
   },
 };
 
