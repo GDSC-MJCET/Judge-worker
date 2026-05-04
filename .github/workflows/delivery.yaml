@@ -1,0 +1,46 @@
+name: Production Delivery (Redeploy from GHCR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: latest)"
+        required: false
+        default: "latest"
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH Redeploy
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+            IMAGE=ghcr.io/${OWNER}/judge-worker:${{ github.event.inputs.image_tag || 'latest' }}
+
+            echo "Logging into GHCR..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            echo "Pulling image $IMAGE ..."
+            docker pull $IMAGE
+
+            echo "Stopping old container (ignore errors)..."
+            docker stop judge-worker || true
+            docker rm judge-worker || true
+
+            echo "Starting container..."
+            docker run -d \
+              --name judge-worker \
+              --network="host" \
+              --env-file /home/samiuddin/judge-worker.env \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v /tmp/judge:/tmp/judge \
+              --restart unless-stopped \
+              $IMAGE
+
+            echo "✅ Delivery completed!"
