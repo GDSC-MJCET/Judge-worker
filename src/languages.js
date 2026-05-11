@@ -16,8 +16,13 @@ const LANGUAGES = {
   },
   java: {
     image: 'openjdk:17.0.1-slim',
-    filename: 'Main.java',          // default; runner overrides with actual public class name
+    filename: 'Main.java',
     runCmd: 'javac Main.java && java Main',
+  },
+  python_ml: {
+    image: 'sami502/my-python-ml:v1',
+    filename: 'solution.py',
+    runCmd: 'python solution.py',
   },
 };
 
